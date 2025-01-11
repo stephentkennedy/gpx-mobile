@@ -5025,6 +5025,7 @@ function options()
 	outputW.innerHTML="";
 	menu.innerHTML="<button class='button' onclick='increasefontsize()'>Larger Font</button>";
 	menu.innerHTML+="<button class='button' onclick='decreasefontsize()'>Smaller Font</button>";
+	menu.innerHTML+='<label>Max Effect Framerate:</label> <select class="max-framerate"><option value="">Unlimited</option><option value="240">240fps</option><option value="120">120fps</option><option value="75">75fps</option><option value="60">60fps</option><option value="30">30fps</option><option value="24">24fps</option><option value="15">15fps</option><option value="5">5fps</option></select>';
 	/*if (defaultLayoutBool == true)
 	{
 		menu.innerHTML+="<button class='button' onclick='mobileLayout()'>Change to Mobile Layout</button>";

@@ -3,14 +3,78 @@ var weather_fx = {
     canvas: false,
     ctx: false,
     wind_var: 0,
+    max_fps: 60,
+    clamp: false,
+    min_frame_time: false,
+    calc_prev: false,
+    prev: false,
+    now: false,
+    then: false,
+    elapsed: false,
+    frames: 0,
+    ideal_fps: 60,
+    current_fps: 0,
+    adjust: 1,
+    inited: false,
     request_animation_frame: function(){
+        weather_fx.prev = weather_fx.now;
+        weather_fx.now = Date.now();
+        //console.log('Frame: ' + weather_fx.frames);
+        if(
+            weather_fx.then != false
+        ){
+            weather_fx.elapsed = weather_fx.now - weather_fx.then; 
+
+        }else{
+           weather_fx.elapsed = weather_fx.min_frame_time + 1; //Always run our first frame.
+           weather_fx.then = Date.now();
+        }
+
         if(
             weather_fx.draw_function !== false
             && typeof weather_fx.draw_functions[weather_fx.draw_function] == 'function'
+            && (
+                weather_fx.elapsed > weather_fx.min_frame_time
+                || weather_fx.clamp == false
+            )
         ){
-            weather_fx.draw_functions[weather_fx.draw_function]();
+           weather_fx.then = weather_fx.now - (weather_fx.elapsed % weather_fx.min_frame_time);
+           weather_fx.calc_fps();
+           weather_fx.draw_functions[weather_fx.draw_function]();
+
         }
         window.requestAnimationFrame(weather_fx.request_animation_frame);
+    },
+    calc_fps: function(){
+        var diff = weather_fx.now - weather_fx.prev;
+        var fps = diff / 1000;
+        fps = 1 / fps;
+        if(weather_fx.clamp){
+            if(fps > weather_fx.max_fps){
+                fps = weather_fx.max_fps;
+            }
+        }
+        weather_fx.current_fps = fps;
+        weather_fx.adjust = weather_fx.ideal_fps / fps;
+    },
+    set_fps: function(fps){
+        console.log('Changing FPS to',fps);
+        var resume = false;
+        if(weather_fx.draw_function != false){
+            resume = weather_fx.draw_function;
+            weather_fx.clear_effect();
+        }
+        if(typeof fps == 'undefined' || fps == '' || fps == 0){
+            weather_fx.clamp = false;
+            weather_fx.max_fps = 60;
+        }else{
+            weather_fx.clamp = true;
+            weather_fx.max_fps = fps;
+        }
+        weather_fx.min_frame_time = 1000 / weather_fx.max_fps;
+        if(resume != false){
+            weather_fx.start_effect(resume);
+        }
     },
     get_context: function($canvas){
         var canvas = $canvas[0];
@@ -56,6 +120,9 @@ var weather_fx = {
             return Number(number.toFixed(2));
         },
     },
+    adjust_speed: function(speed){
+        return speed * weather_fx.adjust;
+    },
     draw_functions: {
         rain: function(){
             weather_fx.clear_canvas();
@@ -69,10 +136,10 @@ var weather_fx = {
                     drop_array.push({
                         x: util.rand(0, weather_fx.canvas.width),
                         y: util.rand(-255, 0),
-                        y_speed: Math.floor(util.rand(5, weather_fx.canvas.height) / 32) + 1,
-                        x_speed: util.rand(-5, 5),
-                        x_step: 0.01,
-                        y_step: 0.01,
+                        y_speed: weather_fx.adjust_speed(Math.floor(util.rand(5, weather_fx.canvas.height) / 32) + 1),
+                        x_speed: weather_fx.adjust_speed(util.rand(-5, 5)),
+                        x_step: weather_fx.adjust_speed(0.01),
+                        y_step: weather_fx.adjust_speed(0.01),
                         x_to: util.rand(-5, 5),
                         y_to: Math.floor(util.rand(5, weather_fx.canvas.height) / 32) + 1,
                         color: {
@@ -176,10 +243,10 @@ var weather_fx = {
                     drop_array.push({
                         x: util.rand(0, weather_fx.canvas.width),
                         y: util.rand(-255, 0),
-                        y_speed: Math.floor(util.rand(5, weather_fx.canvas.height) / 256) + 1,
-                        x_speed: util.rand(-5, 5),
-                        x_step: 0.01,
-                        y_step: 0.01,
+                        y_speed: weather_fx.adjust_speed(Math.floor(util.rand(5, weather_fx.canvas.height) / 256) + 1),
+                        x_speed: weather_fx.adjust_speed(util.rand(-5, 5)),
+                        x_step: weather_fx.adjust_speed(0.01),
+                        y_step: weather_fx.adjust_speed(0.01),
                         x_to: util.rand(-5, 5),
                         y_to: Math.floor(util.rand(5, weather_fx.canvas.height) / 256) + 1,
                         color: {
@@ -395,14 +462,27 @@ var weather_fx = {
         }
     },
     init: function(){
+        if(this.inited){
+            return;
+        }
         var to_insert = '<canvas width="' + $(window).width() + '" height="'+ $(window).height() +'" id="weather_fx"></canvas>';
 
         $('body').append(to_insert);
 
         var $canvas = $('#weather_fx');
         weather_fx.get_context($canvas);
+        this.min_frame_time = 1000 / this.max_fps;
+
+        jQuery(document, 'select.max-framerate').on('change', function(e){
+            if(!jQuery(e.target).is('select.max-framerate')){
+                return;
+            }
+            var new_value = jQuery(e.target).val();
+            weather_fx.set_fps(new_value);
+        });
 
         window.requestAnimationFrame(weather_fx.request_animation_frame);
+        this.inited = true;
     },
     clear_effect: function(){
         weather_fx.draw_function = false;
